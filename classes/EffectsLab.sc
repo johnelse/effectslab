@@ -32,10 +32,13 @@ EffectsLab {
 		
 		effectClasses = EffectUnit.subclasses;
 		effectNames = Array.new(effectClasses.size);
-		effectClasses.do({ |class|
-			class.storeSynthDef;
-			effectNames = effectNames.add(class.effectName);
+		effectClasses.do({ |effectClass|
+			effectClass.storeSynthDef;
+			effectNames = effectNames.add(effectClass.effectName);
 		});
+		
+		effectObjects = Array.fill(maxEffects, nil);
+		effectSynths = Array.fill(maxEffects, nil);
 	
 		synthGroup = Group.new(Server.default, \addToHead);
 	
@@ -54,7 +57,7 @@ EffectsLab {
 	}
 
 	storeEffectSynthDefs {
-		// Put this somewhere.
+		// Put this somewhere - it's not being used yet.
 		SynthDef(\autowah2, {
 			arg in=0, out=0, i_minCutoff=500, i_maxCutoff=1500;
 			var source, sourceAmp, cutoff, output;
@@ -63,6 +66,7 @@ EffectsLab {
 			source = In.ar(in);
 			sourceAmp = Amplitude.kr(source, 0.05, 0.05);
 			
+			// Move the cutoff frequency as the amplitude changes.
 			cutoff = (i_maxCutoff - i_minCutoff) * Clip.kr(sourceAmp*10, 0, 1) + i_minCutoff;
 			
 			output = RLPF.ar(source, cutoff, 0.25);	
@@ -147,7 +151,12 @@ EffectsLab {
 				["0", Color.black, Color.gray],
 				["1", Color.black, Color.red]
 			];
-			powerButtons[i].action = {};
+			powerButtons[i].action = {
+				if ( mainPowerButton.value == 1, {
+					this.freeAll;
+					this.createSynthChain;
+				});
+			};
 			
 			guiButtons = guiButtons.add ( Button.new(win, Rect(300, y, 40, 20)) );
 			guiButtons[i].states = [
@@ -206,15 +215,13 @@ EffectsLab {
 		// Create input synth.
 		inputSynth = Synth.new(\input, [\in, inputSelector.value, \out, outputSelector.value], synthGroup, \addToHead);
 
-		// Create effect synths.
-		effectObjects = Array.new(maxEffects);
-		
+		// Create effect synths.		
 		maxEffects.do({
 			arg i;
 			
 			if ( powerButtons[i].value == 1,
 			{
-				effectObjects = effectObjects.add(effectClasses[effectSelectors[i].value].new);
+				effectObjects[i] = effectClasses[effectSelectors[i].value].new;
 				
 				synth = effectObjects[i].createSynth;
 				Server.default.sendBundle(nil, synth.addToTailMsg(synthGroup, [\in, outputSelector.value, \out, outputSelector.value]));
@@ -231,5 +238,7 @@ EffectsLab {
 	freeAll
 	{
 		synthGroup.freeAll;
+		effectObjects = Array.fill(maxEffects, nil);
+		effectSynths = Array.fill(maxEffects, nil);
 	}
 }

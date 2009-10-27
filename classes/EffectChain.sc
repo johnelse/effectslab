@@ -28,6 +28,8 @@ EffectChain {
 
 		effectUnits = Array.fill(maxEffects, nil);
 		synthGroup = Group.new(Server.default, \addToHead);
+		
+		this.createChain;
 	}
 	
 	storeIOSynthDefs {
@@ -48,12 +50,38 @@ EffectChain {
 		}).memStore;
 	}
 	
-	activate {
-		this.freeAll;
-		
+	createChain {		
 		effectBus = Bus.audio(Server.default);
 		inputSynth = Synth.new(\input, [\in, inputBus, \out, effectBus], synthGroup, \addToHead);
 		outputSynth = Synth.new(\output, [\in, effectBus, \out, outputBus], synthGroup, \addToTail);
+	}
+	
+	freeAll {
+		// Use this when you're finished with the chain.
+		synthGroup.freeAll;
+		effectBus.free;
+		effectUnits = Array.fill(maxEffects, nil);
+	}
+	
+	reset {
+		// Use this to remove all effects from the chain and restart.
+		this.freeAll;
+		
+		this.createChain;
+	}
+	
+	inputBus_ {
+		arg in;
+		
+		inputBus = in;
+		inputSynth.set(\in, inputBus);
+	}
+	
+	outputBus_ {
+		arg out;
+		
+		outputBus = out;
+		outputSynth.set(\out, outputBus);
 	}
 	
 	addEffect {
@@ -99,12 +127,6 @@ EffectChain {
 	getSynth {
 		arg position;
 		^effectUnits[position].synth;
-	}
-	
-	freeAll {
-		synthGroup.freeAll;
-		effectBus.free;
-		effectUnits = Array.fill(maxEffects, nil);
 	}
 	
 	getNextSynthPosition {

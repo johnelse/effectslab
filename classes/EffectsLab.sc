@@ -4,6 +4,7 @@ EffectsLab {
 	var effectClasses;
 	var effectNames;
 	var maxEffects = 8;
+	var effectChain;
 	// GUI objects.
 	var win;
 	var inputSelector, outputSelector;
@@ -13,11 +14,6 @@ EffectsLab {
 	var mainPowerButton;
 	// GUI objects for debugging.
 	var buttonShowNodeTree;
-	// Synths.
-	var synthGroup;
-	var inputSynth;
-	var effectObjects;
-	var effectSynths;
 
 	*initClass {
 	}
@@ -28,50 +24,14 @@ EffectsLab {
 	}
 	
 	init {
-		this.storeIOSynthDefs;
-		
 		effectClasses = EffectUnit.subclasses;
 		effectNames = Array.new(effectClasses.size);
-		effectClasses.do({ |effectClass|
-			effectClass.storeSynthDef;
+		effectClasses.do({
+			arg effectClass;
 			effectNames = effectNames.add(effectClass.effectName);
 		});
-		
-		effectObjects = Array.fill(maxEffects, nil);
-		effectSynths = Array.fill(maxEffects, nil);
-	
-		synthGroup = Group.new(Server.default, \addToHead);
 	
 		this.createGUI;
-	}
-	
-	storeIOSynthDefs {
-		// Audio input synth.
-		SynthDef(\input, {
-			arg in=0, out=0;
-			
-			var source;
-			source = SoundIn.ar(in, 1);
-			Out.ar(out, source);
-		}).memStore;
-	}
-
-	storeEffectSynthDefs {
-		// Put this somewhere - it's not being used yet.
-		SynthDef(\autowah2, {
-			arg in=0, out=0, i_minCutoff=500, i_maxCutoff=1500;
-			var source, sourceAmp, cutoff, output;
-			
-			// Get input amplitude.
-			source = In.ar(in);
-			sourceAmp = Amplitude.kr(source, 0.05, 0.05);
-			
-			// Move the cutoff frequency as the amplitude changes.
-			cutoff = (i_maxCutoff - i_minCutoff) * Clip.kr(sourceAmp*10, 0, 1) + i_minCutoff;
-			
-			output = RLPF.ar(source, cutoff, 0.25);	
-			ReplaceOut.ar(out, output);
-		}).memStore;
 	}
 
 	createGUI {
@@ -81,8 +41,7 @@ EffectsLab {
 		// Main window.
 		win = Window.new("Effects Lab", Rect.new(100, 600, 500, 500));
 		win.onClose = {
-			this.freeAll;
-			synthGroup.free;
+			effectChain.freeAll;
 		};
 
 		// Input and output bus selectors.
@@ -94,12 +53,12 @@ EffectsLab {
 		
 		inBusCount.do({
 			arg i;
-			inBusNames = inBusNames.add ( "Input"+i );
+			inBusNames = inBusNames.add ( "Input "+i );
 		});
 		
 		outBusCount.do({
 			arg i;
-			outBusNames = outBusNames.add ( "Output"+i );
+			outBusNames = outBusNames.add ( "Output "+i );
 		});
 
 		inputSelector = PopUpMenu.new(win, Rect.new(10, 240, 140, 20));
@@ -110,8 +69,7 @@ EffectsLab {
 			[menu.value, menu.item].postln;
 
 			if ( mainPowerButton.value == 1, {
-				this.freeAll;
-				this.createSynthChain;
+				effectChain.inputBus = menu.value;
 			});
 		};
 
@@ -123,8 +81,7 @@ EffectsLab {
 			[menu.value, menu.item].postln;
 
 			if ( mainPowerButton.value == 1, {
-				this.freeAll;
-				this.createSynthChain;
+				effectChain.outputBus = menu.value;
 			});
 		};
 		
@@ -144,6 +101,11 @@ EffectsLab {
 				arg menu;
 
 				[menu.value, menu.item].postln;
+				
+				if ( mainPowerButton.value == 1 && powerButtons[i].value == 1, {
+					effectChain.removeEffect(i);
+					effectChain.addEffect(i, effectClasses[menu.value]);
+				});
 			};
 			
 			powerButtons = powerButtons.add ( Button.new(win, Rect(280, y, 20, 20)) );
@@ -153,8 +115,11 @@ EffectsLab {
 			];
 			powerButtons[i].action = {
 				if ( mainPowerButton.value == 1, {
-					this.freeAll;
-					this.createSynthChain;
+					if ( powerButtons[i].value == 1, {
+						effectChain.addEffect(i, effectClasses[effectSelectors[i].value]);
+					},{
+						effectChain.removeEffect(i);
+					});
 				});
 			};
 			
@@ -163,9 +128,7 @@ EffectsLab {
 				["edit", Color.black, Color.gray]
 			];
 			guiButtons[i].action = {
-				if ( effectObjects[i].notNil, {
-					effectObjects[i].showGUI;
-				});
+				// TODO
 			};
 		});
 
@@ -179,10 +142,18 @@ EffectsLab {
 			arg butt;
 			
 			if ( butt.value == 1, {
-				this.createSynthChain;
+				effectChain = EffectChain.new(maxEffects, inputSelector.value, outputSelector.value);
+				
+				maxEffects.do {
+					arg i;
+					
+					if ( powerButtons[i].value == 1, {
+						effectChain.addEffect(i, effectClasses[effectSelectors[i].value]);
+					});
+				}
 			},
 			{
-				this.freeAll;
+				effectChain.freeAll;
 			});
 				
 		});
@@ -194,51 +165,10 @@ EffectsLab {
 				["Query node tree", Color.black, Color.gray]
 			])
 			.action_({
-				synthGroup.dumpTree(true);
+				effectChain.synthGroup.dumpTree(true);
 			});
 		});
 		
 		win.front;
-	}
-	
-	front {
-		if ( win.notNil, {
-			if ( win.isClosed == false, {
-				win.front;
-			});
-		});
-	}
-	
-	createSynthChain
-	{
-		var synth;
-		// Create input synth.
-		inputSynth = Synth.new(\input, [\in, inputSelector.value, \out, outputSelector.value], synthGroup, \addToHead);
-
-		// Create effect synths.		
-		maxEffects.do({
-			arg i;
-			
-			if ( powerButtons[i].value == 1,
-			{
-				effectObjects[i] = effectClasses[effectSelectors[i].value].new;
-				
-				synth = effectObjects[i].createSynth;
-				Server.default.sendBundle(nil, synth.addToTailMsg(synthGroup, [\in, outputSelector.value, \out, outputSelector.value]));
-				synth.set(\in, outputSelector.value, \out, outputSelector.value);
-				effectSynths = effectSynths.add(synth);
-			},
-			{
-				effectObjects = effectObjects.add(nil);
-				effectSynths = effectSynths.add(nil);
-			});
-		});
-	}
-	
-	freeAll
-	{
-		synthGroup.freeAll;
-		effectObjects = Array.fill(maxEffects, nil);
-		effectSynths = Array.fill(maxEffects, nil);
 	}
 }

@@ -40,7 +40,7 @@ AutoWahEffect : EffectUnit {
 			cutoff = (i_maxCutoff - i_minCutoff) * envelope + i_minCutoff;
 			
 			// Apply the wah envelope and output.
-			output = RLPF.ar(source, cutoff, 0.25);
+			output = Resonz.ar(LPF.ar(source, cutoff), cutoff, 0.25, 10);
 			ReplaceOut.ar(out, output);
 		}).memStore;
 	}
@@ -146,8 +146,8 @@ FlangeEffect : EffectUnit {
 			// Delay LFO.
 			delay = SinOsc.kr(rate, 0, (maxDelay-minDelay)/2, (maxDelay+minDelay)/2);
 			
-			// Flange.
-			output = DelayN.ar(source, delay, delay, 1, source);
+			// Flange. LPF gets rid of some high frequency noise.
+			output = LPF.ar(DelayN.ar(source, delay, delay, 1, source), 2000);
 			
 			ReplaceOut.ar(out, output);
 		}).memStore;
@@ -198,6 +198,35 @@ FoldEffect : EffectUnit {
 		levelSlider.action = {
 			synth.set(\level, levelSlider.value);
 		};
+	}
+}
+
+ReverbEffect : EffectUnit {
+	*initClass {
+	}
+	
+	*effectName {
+		^\reverb;
+	}
+	
+	*storeSynthDef {
+		SynthDef(this.effectName, {
+			arg in=0, out=0, mix=0.5, room=0.1, damp=0.1;
+			var source, output;
+			
+			// Get input.
+			source = In.ar(in, 1);
+			
+			output = FreeVerb.ar(source, mix, room, damp);
+			ReplaceOut.ar(out, output);
+		}).memStore;
+	}
+	
+	init {
+		^super.init;
+	}
+	
+	showGUI {
 	}
 }
 

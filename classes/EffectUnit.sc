@@ -10,7 +10,6 @@ EffectUnit {	// Abstract class
 	}
 	
 	createSynth {
-		// Create and return Synth object.
 		synth = Synth.basicNew(this.class.effectName);
 		
 		^synth;
@@ -67,7 +66,6 @@ ClipEffect : EffectUnit {
 			arg in=0, out=0, level=1;
 			var source, output;
 			
-			// Get input.
 			source = In.ar(in, 1);
 			
 			output = Clip.ar(source, -1*level, level) / level;
@@ -139,15 +137,15 @@ FlangeEffect : EffectUnit {
 	
 	*storeSynthDef {
 		SynthDef(this.effectName, {
-			arg in=0, out=0, depth=1, rate=0.25, minDelay=0.001, maxDelay=0.01;
-			var source, delay, output, delayTime;
+			arg in=0, out=0, depth=1, rate=0.25, delay=0.001, width=0.01;
+			var source, delayLFO, output, delayTime;
 			
 			source = In.ar(in, 1);
 			// Delay LFO.
-			delay = SinOsc.kr(rate, 0, (maxDelay-minDelay)/2, (maxDelay+minDelay)/2);
+			delayLFO = SinOsc.kr(rate, 0, width/2, width/2+delay);
 			
 			// Flange. LPF gets rid of some high frequency noise.
-			output = LPF.ar(DelayN.ar(source, delay, delay, 1, source), 2000);
+			output = LPF.ar(DelayN.ar(source*depth, delayLFO, delayLFO, 1, source), 2000);
 			
 			ReplaceOut.ar(out, output);
 		}).memStore;
@@ -176,7 +174,6 @@ FoldEffect : EffectUnit {
 			arg in=0, out=0, level=1;
 			var source, output;
 			
-			// Get input.
 			source = In.ar(in, 1);
 			
 			output = Fold.ar(source, -1*level, level) / level;
@@ -214,7 +211,6 @@ ReverbEffect : EffectUnit {
 			arg in=0, out=0, mix=0.5, room=0.1, damp=0.1;
 			var source, output;
 			
-			// Get input.
 			source = In.ar(in, 1);
 			
 			output = FreeVerb.ar(source, mix, room, damp);
@@ -243,7 +239,6 @@ WrapEffect : EffectUnit {
 			arg in=0, out=0, level=1;
 			var source, output;
 			
-			// Get input.
 			source = In.ar(in, 1);
 			
 			output = Wrap.ar(source, -1*level, level) / level;

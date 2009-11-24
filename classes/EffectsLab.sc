@@ -41,7 +41,9 @@ EffectsLab {
 		// Main window.
 		win = Window.new("Effects Lab", Rect.new(100, 600, 500, 500));
 		win.onClose = {
-			effectChain.freeAll;
+			if ( mainPowerButton.value == 1, {
+				effectChain.freeAll;
+			});
 		};
 
 		// Input and output bus selectors.

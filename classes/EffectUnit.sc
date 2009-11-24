@@ -1,18 +1,41 @@
 EffectUnit {	// Abstract class
 	var <synth;
+	var <settings;
 	var win;
-
+	
 	*new {
 		^super.new.init;
 	}
 	
 	init {
+		this.defaultSettings;
 	}
 	
 	createSynth {
 		synth = Synth.basicNew(this.class.effectName);
 		
 		^synth;
+	}
+	
+	defaultSettings {
+		settings = IdentityDictionary.new;
+	}
+	
+	setControlValue {
+		arg control, value;
+		var min, max;
+		
+		min = settings.at(control).at(\min);
+		max = settings.at(control).at(\max);
+		if ( min <= value && value <= max, {
+			settings.at(control).put(\value, value);
+			if ( synth.isPlaying, {
+				synth.set(control, value);
+			});
+		},{
+			"Value out of range.".postln;
+			("Allowed range: " ++ min ++ " -> " ++ max).postln;
+		});
 	}
 }
 
@@ -47,10 +70,6 @@ AutoWahEffect : EffectUnit {
 	init {
 		^super.init;
 	}
-	
-	showGUI {
-		// Load a GUI specific to this effect which can change the synth parameters.
-	}
 }
 
 ClipEffect : EffectUnit {
@@ -76,18 +95,6 @@ ClipEffect : EffectUnit {
 	init {
 		^super.init;
 	}
-	
-	showGUI {
-		var levelSlider;
-		
-		win = Window.new(this.class.effectName, Rect(100, 100, 300, 300));
-		win.front;
-		
-		levelSlider = Slider.new(win, Rect(50, 20, 200, 20));
-		levelSlider.action = {
-			synth.set(\level, levelSlider.value);
-		};
-	}
 }
 
 DistortEffect : EffectUnit {
@@ -112,18 +119,6 @@ DistortEffect : EffectUnit {
 	
 	init {
 		^super.init;
-	}
-
-	showGUI {
-		var levelSlider;
-		
-		win = Window.new(this.class.effectName, Rect(100, 100, 300, 300));
-		win.front;
-		
-		levelSlider = Slider.new(win, Rect(50, 20, 200, 20));
-		levelSlider.action = {
-			synth.set(\amount, levelSlider.value);
-		};
 	}
 }
 
@@ -154,11 +149,6 @@ FlangeEffect : EffectUnit {
 	init {
 		^super.init;
 	}
-
-	showGUI {
-		win = Window.new(this.class.effectName, Rect(100, 100, 300, 300));
-		win.front;
-	}
 }
 
 FoldEffect : EffectUnit {
@@ -183,18 +173,6 @@ FoldEffect : EffectUnit {
 	
 	init {
 		^super.init;
-	}
-	
-	showGUI {
-		var levelSlider;
-		
-		win = Window.new(this.class.effectName, Rect(100, 100, 300, 300));
-		win.front;
-		
-		levelSlider = Slider.new(win, Rect(50, 20, 200, 20));
-		levelSlider.action = {
-			synth.set(\level, levelSlider.value);
-		};
 	}
 }
 
@@ -221,9 +199,6 @@ ReverbEffect : EffectUnit {
 	init {
 		^super.init;
 	}
-	
-	showGUI {
-	}
 }
 
 WrapEffect : EffectUnit {
@@ -248,17 +223,5 @@ WrapEffect : EffectUnit {
 	
 	init {
 		^super.init;
-	}
-	
-	showGUI {
-		var levelSlider;
-		
-		win = Window.new(this.class.effectName, Rect(100, 100, 300, 300));
-		win.front;
-		
-		levelSlider = Slider.new(win, Rect(50, 20, 200, 20));
-		levelSlider.action = {
-			synth.set(\level, levelSlider.value);
-		};
 	}
 }

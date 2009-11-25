@@ -1,8 +1,6 @@
 EffectChain {
 	var maxEffects, <inputBus, <outputBus;
 	var <synthGroup;
-	var <effectClasses;
-	var <effectNames;
 	var <effectUnits;
 	var inputSynth, outputSynth;
 	var effectBus;
@@ -15,24 +13,7 @@ EffectChain {
 		^super.newCopyArgs(maxEffects, inputBus, outputBus).init;
 	}
 	
-	init {
-		this.storeIOSynthDefs;
-		
-		effectClasses = EffectUnit.subclasses;
-		effectNames = Array.new(effectClasses.size);
-		effectClasses.do({
-			arg effectClass;
-			effectClass.storeSynthDef;
-			effectNames = effectNames.add(effectClass.effectName);
-		});
-
-		effectUnits = Array.fill(maxEffects, nil);
-		synthGroup = Group.new(Server.default, \addToHead);
-		
-		this.createChain;
-	}
-	
-	storeIOSynthDefs {
+	*storeIOSynthDefs {
 		// Audio input synth.
 		SynthDef(\input, {
 			arg in=0, out=0;
@@ -50,7 +31,14 @@ EffectChain {
 		}).memStore;
 	}
 	
-	createChain {		
+	init {
+		effectUnits = Array.fill(maxEffects, nil);
+
+		this.createEmptyChain;
+	}
+	
+	createEmptyChain {
+		synthGroup = Group.new(Server.default, \addToHead);
 		effectBus = Bus.audio(Server.default);
 		inputSynth = Synth.new(\input, [\in, inputBus, \out, effectBus], synthGroup, \addToHead);
 		outputSynth = Synth.new(\output, [\in, effectBus, \out, outputBus], synthGroup, \addToTail);
@@ -59,6 +47,7 @@ EffectChain {
 	freeAll {
 		// Use this when you're finished with the chain.
 		synthGroup.freeAll;
+		synthGroup.free;
 		effectBus.free;
 		effectUnits = Array.fill(maxEffects, nil);
 	}
@@ -66,8 +55,7 @@ EffectChain {
 	reset {
 		// Use this to remove all effects from the chain and restart.
 		this.freeAll;
-		
-		this.createChain;
+		this.createEmptyChain;
 	}
 	
 	inputBus_ {
@@ -85,31 +73,15 @@ EffectChain {
 	}
 	
 	addEffect {
+		// Add a new EffectUnit at the given position. Free any synth already in this position.
+		// You still need to call startEffect to start the actual synth.
 		arg position, effectClass;
-		var newEffectUnit, newSynth, nextSynthPosition;
+		var newEffectUnit, nextSynthPosition;
 		
 		newEffectUnit = effectClass.new;
-		newSynth = newEffectUnit.createSynth;
 		
-		if( effectUnits[position].notNil,
-		{
-			// Replace the synth currently in this position.
-			Server.default.sendBundle(0.1, newSynth.addReplaceMsg(effectUnits[position].synth, [\in, effectBus, \out, effectBus]));
-		},
-		{
-			nextSynthPosition = this.getNextSynthPosition(position).postln;
-			
-			if ( nextSynthPosition == -1,
-			{
-				// If the synth is to be created in the last position, place it before the output synth.
-				"adding at end of chain".postln;
-				Server.default.sendBundle(0.1, newSynth.addBeforeMsg(outputSynth, [\in, effectBus, \out, effectBus]));
-			},
-			{
-				// Otherwise, place it before the next synth in the chain.
-				"adding into chain".postln;
-				Server.default.sendBundle(0.1, newSynth.addBeforeMsg(effectUnits[nextSynthPosition].synth, [\in, effectBus, \out, effectBus]));
-			});
+		if ( effectUnits[position].notNil, {
+			effectUnits[position].synth.free;
 		});
 
 		effectUnits[position] = newEffectUnit;
@@ -117,16 +89,53 @@ EffectChain {
 	
 	removeEffect {
 		arg position;
-		if ( effectUnits[position].notNil,
-		{
+		if ( effectUnits[position].notNil, {
 			effectUnits[position].synth.free;
 			effectUnits[position] = nil;	
+		},{
+			this.warnNoEffect(position);
 		});
 	}
 	
+	startEffect {
+		arg position;
+		if ( effectUnits[position].notNil, {
+			var newSynth, nextSynthPosition;
+			newSynth = effectUnits[position].createSynth;
+			
+			nextSynthPosition = this.getNextSynthPosition(position);
+			
+			if ( nextSynthPosition == -1, {
+				// If the synth is to be created in the last position, place it before the output synth.
+				"adding at end of chain".postln;
+				Server.default.sendBundle(0.1, newSynth.addBeforeMsg(outputSynth, [\in, effectBus, \out, effectBus]));
+			},{
+				// Otherwise, place it before the next synth in the chain.
+				"adding into chain".postln;
+				Server.default.sendBundle(0.1, newSynth.addBeforeMsg(effectUnits[nextSynthPosition].synth, [\in, effectBus, \out, effectBus]));
+			});
+		},{
+			this.warnNoEffect(position);
+		});
+	}
+	
+	stopEffect {
+		arg position;
+		if ( effectUnits[position].notNil, {
+			effectUnits[position].synth.free;
+		},{
+			this.warnNoEffect(position);
+		});
+	}
+		
+	
 	getSynth {
 		arg position;
-		^effectUnits[position].synth;
+		if ( effectUnits[position].notNil, {
+			^effectUnits[position].synth;
+		},{
+			^nil;
+		});
 	}
 	
 	getNextSynthPosition {
@@ -139,5 +148,10 @@ EffectChain {
 		
 		// No synth was found in the chain past the supplied position.
 		^(-1);
+	}
+	
+	warnNoEffect {
+		arg position;
+		("EffectChain warning - no effect exists in position " ++ position).postln;
 	}
 }

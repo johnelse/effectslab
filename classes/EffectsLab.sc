@@ -1,8 +1,7 @@
 EffectsLab {
 	// Data.
 	var debugMode;
-	var effectClasses;
-	var effectNames;
+	var effectClassDict;
 	var maxEffects = 8;
 	var effectChain;
 	// GUI objects.
@@ -24,12 +23,17 @@ EffectsLab {
 	}
 	
 	init {
+		var effectClasses;
+		
+		effectClassDict = IdentityDictionary.new;
 		effectClasses = EffectUnit.subclasses;
-		effectNames = Array.new(effectClasses.size);
-		effectClasses.do({
+		effectClasses.do {
 			arg effectClass;
-			effectNames = effectNames.add(effectClass.effectName);
-		});
+			effectClassDict.put(effectClass.effectName, effectClass);
+			effectClass.storeSynthDef;
+		};
+		
+		EffectChain.storeIOSynthDefs;
 	
 		this.createGUI;
 	}
@@ -37,6 +41,7 @@ EffectsLab {
 	createGUI {
 		var inBusCount, outBusCount;
 		var inBusNames, outBusNames;
+		var effectNames;
 		
 		// Main window.
 		win = Window.new("Effects Lab", Rect.new(100, 600, 500, 500));
@@ -68,8 +73,6 @@ EffectsLab {
 		inputSelector.action = {
 			arg menu;
 
-			[menu.value, menu.item].postln;
-
 			if ( mainPowerButton.value == 1, {
 				effectChain.inputBus = menu.value;
 			});
@@ -79,8 +82,6 @@ EffectsLab {
 		outputSelector.items = outBusNames;
 		outputSelector.action = {
 			arg menu;
-			
-			[menu.value, menu.item].postln;
 
 			if ( mainPowerButton.value == 1, {
 				effectChain.outputBus = menu.value;
@@ -92,6 +93,8 @@ EffectsLab {
 		powerButtons = Array.new(maxEffects);
 		guiButtons = Array.new(maxEffects);
 		
+		effectNames = effectClassDict.keys.asArray.insert(0, \none);
+		
 		maxEffects.do({
 			arg i;
 			
@@ -101,12 +104,17 @@ EffectsLab {
 			effectSelectors[i].items = effectNames;
 			effectSelectors[i].action = {
 				arg menu;
-
-				[menu.value, menu.item].postln;
+				var effectClass;
 				
-				if ( mainPowerButton.value == 1 && powerButtons[i].value == 1, {
+				effectClass = effectClassDict[menu.item];
+				
+				if ( effectClass.notNil, {
+					effectChain.addEffect(i, effectClass);
+					if ( mainPowerButton.value == 1 && powerButtons[i].value == 1, {
+						effectChain.startEffect(i);
+					});
+				},{
 					effectChain.removeEffect(i);
-					effectChain.addEffect(i, effectClasses[menu.value]);
 				});
 			};
 			
@@ -116,11 +124,16 @@ EffectsLab {
 				["1", Color.black, Color.red]
 			];
 			powerButtons[i].action = {
-				if ( mainPowerButton.value == 1, {
-					if ( powerButtons[i].value == 1, {
-						effectChain.addEffect(i, effectClasses[effectSelectors[i].value]);
-					},{
-						effectChain.removeEffect(i);
+				var effectClass;
+				effectClass = effectClassDict[effectSelectors[i].item];
+				
+				if ( effectClass.notNil, {
+					if ( mainPowerButton.value == 1, {
+						if ( powerButtons[i].value == 1, {
+							effectChain.startEffect(i);
+						},{
+							effectChain.stopEffect(i);
+						});
 					});
 				});
 			};
@@ -148,9 +161,13 @@ EffectsLab {
 				
 				maxEffects.do {
 					arg i;
+					var effectClass;
+					effectClass = effectClassDict[effectSelectors[i].item];
 					
-					if ( powerButtons[i].value == 1, {
-						effectChain.addEffect(i, effectClasses[effectSelectors[i].value]);
+					if ( effectClass.notNil, {
+						if ( powerButtons[i].value == 1, {
+							effectChain.startEffect(i);
+						});
 					});
 				}
 			},

@@ -27,11 +27,10 @@ EffectUnit {	// Abstract class
 		
 		min = settings.at(control).at(\min);
 		max = settings.at(control).at(\max);
+		
 		if ( min <= value && value <= max, {
 			settings.at(control).put(\value, value);
-			if ( synth.isPlaying, {
-				synth.set(control, value);
-			});
+			synth.set(control, value);
 		},{
 			"Value out of range.".postln;
 			("Allowed range: " ++ min ++ " -> " ++ max).postln;

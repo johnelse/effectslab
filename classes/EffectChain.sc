@@ -13,7 +13,14 @@ EffectChain {
 		^super.newCopyArgs(maxEffects, inputBus, outputBus).init;
 	}
 	
-	*storeIOSynthDefs {
+	init {
+		effectUnits = Array.fill(maxEffects, nil);
+
+		this.storeIOSynthDefs;
+		this.createEmptyChain;
+	}
+	
+	storeIOSynthDefs {
 		// Audio input synth.
 		SynthDef(\input, {
 			arg in=0, out=0;
@@ -29,12 +36,6 @@ EffectChain {
 			source = In.ar(in, 1);
 			Out.ar(out, source);
 		}).memStore;
-	}
-	
-	init {
-		effectUnits = Array.fill(maxEffects, nil);
-
-		this.createEmptyChain;
 	}
 	
 	createEmptyChain {

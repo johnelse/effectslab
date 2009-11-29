@@ -143,7 +143,12 @@ EffectsLab {
 				["edit", Color.black, Color.gray]
 			];
 			guiButtons[i].action = {
-				// TODO
+				var effectUnit;
+				
+				effectUnit = effectChain.effectUnits[i];
+				if ( effectUnit.notNil, {
+					EffectUnitGUI.findGUI(effectUnit);
+				});
 			};
 		});
 

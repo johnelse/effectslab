@@ -17,7 +17,6 @@ EffectChain {
 		effectUnits = Array.fill(maxEffects, nil);
 
 		this.storeIOSynthDefs;
-		this.createEmptyChain;
 	}
 	
 	storeIOSynthDefs {
@@ -50,7 +49,6 @@ EffectChain {
 		synthGroup.freeAll;
 		synthGroup.free;
 		effectBus.free;
-		effectUnits = Array.fill(maxEffects, nil);
 	}
 	
 	reset {

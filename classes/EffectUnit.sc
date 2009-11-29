@@ -148,6 +148,15 @@ FlangeEffect : EffectUnit {
 	init {
 		^super.init;
 	}
+	
+	defaultSettings {
+		settings = IdentityDictionary[
+			\depth       -> IdentityDictionary[\min -> 0, \max -> 1, \value -> 1, \warp -> \lin],
+			\rate        -> IdentityDictionary[\min -> 0.1, \max -> 5, \value -> 0.25, \warp -> \exp],
+			\delay       -> IdentityDictionary[\min -> 0.001, \max -> 0.005, \value -> 0.001, \warp -> \lin],
+			\width       -> IdentityDictionary[\min -> 0.001, \max -> 0.01, \value -> 0.01, \warp -> \lin]
+		];
+	}
 }
 
 FoldEffect : EffectUnit {

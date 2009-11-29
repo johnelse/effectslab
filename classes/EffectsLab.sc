@@ -33,7 +33,7 @@ EffectsLab {
 			effectClass.storeSynthDef;
 		};
 		
-		EffectChain.storeIOSynthDefs;
+		effectChain = EffectChain.new(maxEffects, 0, 0);
 	
 		this.createGUI;
 	}
@@ -73,9 +73,7 @@ EffectsLab {
 		inputSelector.action = {
 			arg menu;
 
-			if ( mainPowerButton.value == 1, {
-				effectChain.inputBus = menu.value;
-			});
+			effectChain.inputBus = menu.value;
 		};
 
 		outputSelector = PopUpMenu.new(win, Rect.new(350, 240, 140, 20));
@@ -83,9 +81,7 @@ EffectsLab {
 		outputSelector.action = {
 			arg menu;
 
-			if ( mainPowerButton.value == 1, {
-				effectChain.outputBus = menu.value;
-			});
+			effectChain.outputBus = menu.value;
 		};
 		
 		// Per-effect controls.
@@ -161,18 +157,14 @@ EffectsLab {
 		.action_({
 			arg butt;
 			
-			if ( butt.value == 1, {
-				effectChain = EffectChain.new(maxEffects, inputSelector.value, outputSelector.value);
+			if ( butt.value == 1, {		
+				effectChain.createEmptyChain;
 				
 				maxEffects.do {
 					arg i;
-					var effectClass;
-					effectClass = effectClassDict[effectSelectors[i].item];
 					
-					if ( effectClass.notNil, {
-						if ( powerButtons[i].value == 1, {
-							effectChain.startEffect(i);
-						});
+					if ( powerButtons[i].value == 1, {
+						effectChain.startEffect(i);
 					});
 				}
 			},

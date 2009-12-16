@@ -98,8 +98,9 @@ EffectChain {
 	
 	startEffect {
 		arg position;
+		var newSynth, nextSynthPosition;
+
 		if ( effectUnits[position].notNil, {
-			var newSynth, nextSynthPosition;
 			newSynth = effectUnits[position].createSynth;
 			
 			nextSynthPosition = this.getNextSynthPosition(position);

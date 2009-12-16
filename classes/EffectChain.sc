@@ -152,6 +152,6 @@ EffectChain {
 	
 	warnNoEffect {
 		arg position;
-		("EffectChain warning - no effect exists in position " ++ position).postln;
+		format("EffectChain warning - no effect exists in position %", position).postln;
 	}
 }

@@ -10,22 +10,20 @@ EffectUnitGUI {
 	*findGUI {
 		// If a GUI already exists for this EffectUnit, find it instead of creating a new one.
 		arg effectUnit;
-		var foundInstance;
+		var guiInstance;
 		
-		foundInstance = allInstances.detect {
-			arg instance;
-			instance.effectUnit === effectUnit;
+		guiInstance = allInstances.detect {
+			arg foundInstance;
+			foundInstance.effectUnit === effectUnit;
 		};
 		
-		if ( foundInstance.notNil, {
-			foundInstance.front;
-			^foundInstance;
+		if ( guiInstance.notNil, {
+			guiInstance.front;
+			^guiInstance;
 		},{
-			var newGUI;
-			
-			newGUI = this.new(effectUnit);
-			allInstances = allInstances.add(newGUI);
-			^newGUI;
+			guiInstance = this.new(effectUnit);
+			allInstances = allInstances.add(guiInstance);
+			^guiInstance;
 		});
 	}
 	
